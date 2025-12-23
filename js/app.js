@@ -376,42 +376,80 @@ function drawStartScreen() {
 }
 
 function moveDino(e) {
-  if (e.type === "touchstart" && (showIntro || !gameStarted)) e.preventDefault();
+  // Verhindert das lästige Zoomen/Scrollen beim Tippen
+  if (e.cancelable) e.preventDefault();
+
+  // --- KOORDINATEN FÜR TOUCH ODER MAUS HOLEN ---
+  let clientX, clientY;
+  if (e.type === "touchstart") {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+
+  // --- LOGIK FÜR INTRO & STARTMENÜ ---
   if (showIntro) {
     if (Date.now() - lastIntermissionTime < 500) return;
-    if (e.type === "mousedown" || e.type === "touchstart" || e.code === "Space") {
-      if (introPage < 2) { introPage++; lastIntermissionTime = Date.now(); }
-      else { showIntro = false; introPage = 0; if (!gameStarted) { gameStarted = true; resetGame(); } }
+    if (introPage < 2) {
+      introPage++;
+      lastIntermissionTime = Date.now();
+    } else {
+      showIntro = false;
+      introPage = 0;
+      if (!gameStarted) {
+        gameStarted = true;
+        resetGame();
+      }
     }
     return;
   }
+
   if (!gameStarted) {
-    if (e.type === "mousedown" || e.type === "touchstart") {
-      let rect = board.getBoundingClientRect();
-      let clientX = (e.type === "touchstart") ? e.touches[0].clientX : e.clientX;
-      let clientY = (e.type === "touchstart") ? e.touches[0].clientY : e.clientY;
-      let x = clientX - rect.left, y = clientY - rect.top;
-      let rightX = board.width - 100, startY = board.height / 2 - 110;
-      if (x > rightX - btnW/2 && x < rightX + btnW/2 && y > startY + 20 && y < startY + 20 + btnH + 10) {
-        currentStoryLevel = 0; showIntro = true; introPage = 0; startScore = 0; lastIntermissionTime = Date.now(); return;
-      }
-      if (x < 200) {
-        let cp_startY = board.height / 2 - 110, cp_gap = 70;
-        if (y > cp_startY && y < cp_startY + btnH && highScore >= 2500) startScore = 2500;
-        else if (y > cp_startY + cp_gap && y < cp_startY + cp_gap + btnH && highScore >= 5000) startScore = 5000;
-        else if (y > cp_startY + cp_gap*2 && y < cp_startY + cp_gap*2 + btnH && highScore >= 7500) startScore = 7500;
-        else if (y > cp_startY + cp_gap*3 && y < cp_startY + cp_gap*3 + btnH && highScore >= 10000) startScore = 10000;
-        else startScore = 0;
-        return;
-      }
-      let pRadius = playBtnSize / 2;
-      if (x > board.width / 2 - pRadius && x < board.width / 2 + pRadius && y > board.height / 2 - pRadius && y < board.height / 2 + pRadius) {
-        startMusic.pause(); startMusic.currentTime = 0; gameStarted = true; resetGame();
-      }
+    let rect = board.getBoundingClientRect();
+    let x = clientX - rect.left;
+    let y = clientY - rect.top;
+
+    // Skalierung anpassen (falls das Canvas auf dem Handy gestreckt wird)
+    let scaleX = board.width / rect.width;
+    let scaleY = board.height / rect.height;
+    x *= scaleX;
+    y *= scaleY;
+
+    let rightX = board.width - 100, startY = board.height / 2 - 110;
+
+    // Intro-Button
+    if (x > rightX - btnW/2 && x < rightX + btnW/2 && y > startY + 20 && y < startY + 20 + btnH + 10) {
+      currentStoryLevel = 0; showIntro = true; introPage = 0; startScore = 0; lastIntermissionTime = Date.now(); return;
+    }
+
+    // Checkpoints
+    if (x < 200) {
+      let cp_startY = board.height / 2 - 110, cp_gap = 70;
+      if (y > cp_startY && y < cp_startY + btnH && highScore >= 2500) startScore = 2500;
+      else if (y > cp_startY + cp_gap && y < cp_startY + cp_gap + btnH && highScore >= 5000) startScore = 5000;
+      else if (y > cp_startY + cp_gap*2 && y < cp_startY + cp_gap*2 + btnH && highScore >= 7500) startScore = 7500;
+      else if (y > cp_startY + cp_gap*3 && y < cp_startY + cp_gap*3 + btnH && highScore >= 10000) startScore = 10000;
+      else startScore = 0;
+      return;
+    }
+
+    // Play-Button
+    let pRadius = playBtnSize / 2;
+    if (x > board.width / 2 - pRadius && x < board.width / 2 + pRadius && y > board.height / 2 - pRadius && y < board.height / 2 + pRadius) {
+      startMusic.pause(); startMusic.currentTime = 0; gameStarted = true; resetGame();
     }
     return;
   }
-  if ((e.code == "Space" || e.code == "ArrowUp" || e.type == "touchstart") && dino.y >= dinoY - 5) {
-    velocityY = -10; jumpSound.currentTime = 0; jumpSound.play();
+
+  // --- SPRUNG-LOGIK IM SPIEL ---
+  // Reagiert auf Tastatur (Space/Up) ODER Tippen auf das Display
+  if (e.code === "Space" || e.code === "ArrowUp" || e.type === "touchstart" || e.type === "mousedown") {
+    if (dino.y >= dinoY - 5) {
+      velocityY = -10;
+      jumpSound.currentTime = 0;
+      jumpSound.play();
+    }
   }
 }
