@@ -34,7 +34,7 @@ const storyData = [
     background: null,
     pages: [
       ["Anna und Marike genießen ihren Girlsabend,", "als die Idylle explodiert: Ein Knall erschüttert", "den Raum und ein Axt-Mörder springt direkt", "aus dem Fernseher!"],
-      ["Er schnappt sich Sahin und will mit ihm fliehen.", "Doch Anna lässt ihn nicht entkommen.", "Der Axt-Mörder entfesselt seine magischen Schöpfungen,", "um sie aufzuhalten:"],
+      ["Er schnappt sich Sahin und will mit ihm fliehen.", "Doch Anna lässt ihn nicht entkommen.", "Der Axt-Mörder entfesselt seine magischen schöpfungen,", "um sie aufzuhalten:"],
       ["Popcorn-Geister, fliegende Fernbedienungen", "und gefährliche Wein-Schleime versperren den Weg.", "Die Jagd beginnt.", "Schnapp Ihn dir Anna – rette Sahin!"]
     ]
   },
@@ -65,7 +65,7 @@ const storyData = [
   {
     title: "Level 5: Das Finale",
     pages: [
-      ["Endstation für den Schurken!", "Mit einer sauberen Links-Rechts-Kombination"," schickt Anna den Axt-Mörder schlafen."],
+      ["Endstation für den schurken!", "Mit einer sauberen Links-Rechts-Kombination"," schickt Anna den Axt-Mörder schlafen."],
       ["Sahin ist frei und hat nur einen Wunsch:", "Urlaub mit dir!"],
       ["Auf nach Kappadokien!"]
     ]
@@ -117,6 +117,7 @@ window.onload = function() {
   dinoY = boardHeight - dinoHeight - framePadding - 15;
   dino.y = dinoY;
 
+  // Bilder laden
   frameImg = new Image(); frameImg.src = "./img/start_screen/frame.png";
   annaCasualImg = new Image(); annaCasualImg.src = "./img/level_1/avatar/anna_casual.png";
   annaBikeImg = new Image(); annaBikeImg.src = "./img/level_2/avatar/anna_bike.png";
@@ -181,7 +182,6 @@ function update() {
 
   if (!gameStarted) {
     drawStartScreen();
-    // Musik wird jetzt über moveDino und drawStartScreen gesteuert
     return;
   }
 
@@ -195,7 +195,7 @@ function update() {
     return;
   }
 
-  // --- LEVEL LOGIK & AUTOMATISCHE INTERMISSIONS ---
+  // --- LEVEL LOGIK ---
   let currentBg, levelIndex = 0;
   if (score < 2500) { currentBg = level1Img; dinoImg = annaCasualImg; levelIndex = 0; }
   else if (score < 5000) { if (currentStoryLevel < 1) triggerIntermission(1); currentBg = level2Img; dinoImg = annaBikeImg; levelIndex = 1; }
@@ -268,12 +268,28 @@ function drawIntroScreen() {
   context.fillText((introPage + 1) + " / 3", board.width / 2, board.height - framePadding - 40);
 }
 
+// --- OPTIMIERTE MUSIK-FUNKTION ---
 function updateLevelMusic(index) {
   let targetTrack = levelMusics[index];
   if (currentPlayingTrack !== targetTrack) {
     stopAllLevelMusic();
     currentPlayingTrack = targetTrack;
-    currentPlayingTrack.play().catch(() => {});
+
+    let playPromise = currentPlayingTrack.play();
+
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.error("Audio blockiert:", error);
+        // Workaround: Bei nächstem Touch abspielen
+        const playOnTouch = () => {
+          if (currentPlayingTrack) currentPlayingTrack.play();
+          document.removeEventListener('touchstart', playOnTouch);
+          document.removeEventListener('mousedown', playOnTouch);
+        };
+        document.addEventListener('touchstart', playOnTouch);
+        document.addEventListener('mousedown', playOnTouch);
+      });
+    }
   }
 }
 
@@ -284,7 +300,6 @@ function stopAllLevelMusic() {
 
 function placeCactus() {
   if (gameOver || !gameStarted || showIntro) return;
-
   let currentSet;
   if (score < 2500) currentSet = monstersLevel1;
   else if (score < 5000) currentSet = monstersLevel2;
@@ -293,7 +308,6 @@ function placeCactus() {
   else currentSet = monstersLevel5;
 
   let selectedImg = currentSet[Math.floor(Math.random() * currentSet.length)];
-
   let w = 65, h = 70;
 
   if (selectedImg.src.includes("wine_slime.png")) { w = 50; h = 45; }
@@ -305,12 +319,7 @@ function placeCactus() {
   else if (selectedImg.src.includes("evil_bike.png")) { w = 180; h = 100; }
   else if (selectedImg.src.includes("sauna_master.png")) { w = 180; h = 100; }
 
-  let monster = {
-    img: selectedImg,
-    x: boardWidth - framePadding,
-    y: boardHeight - h - framePadding - 15,
-    width: w, height: h
-  };
+  let monster = { img: selectedImg, x: boardWidth - framePadding, y: boardHeight - h - framePadding - 15, width: w, height: h };
   cactusArray.push(monster);
   if (cactusArray.length > 5) cactusArray.shift();
 }
@@ -333,22 +342,16 @@ function resetGame() {
 }
 
 function drawStartScreen() {
-  if (startMusic.paused && !showIntro) {
-    startMusic.play().catch(() => {});
-  }
-
+  if (startMusic.paused && !showIntro) { startMusic.play().catch(() => {}); }
   if (isImageValid(startScreenImg)) context.drawImage(startScreenImg, 0, 0, board.width, board.height);
   else { context.fillStyle = "black"; context.fillRect(0, 0, board.width, board.height); }
-
-  context.fillStyle = "white";
-  context.textAlign = "center";
-  context.font = "bold 32px courier";
-  context.fillText("", board.width / 2, board.height / 2 - 160);
 
   if (isImageValid(playBtnImg)) {
     context.drawImage(playBtnImg, board.width / 2 - playBtnSize/2, board.height / 2 - playBtnSize/2, playBtnSize, playBtnSize);
   }
 
+  context.fillStyle = "white";
+  context.textAlign = "center";
   context.font = "bold 20px courier";
   context.fillText("START AB: " + startScore, board.width / 2, board.height / 2 + 100);
   if (lastScore > 0) context.fillText("LETZTER SCORE: " + lastScore, board.width / 2, board.height / 2 + 130);
@@ -373,35 +376,19 @@ function drawStartScreen() {
 
 function moveDino(e) {
   if (e.cancelable) e.preventDefault();
-
   let clientX, clientY;
-  if (e.type === "touchstart") {
-    clientX = e.touches[0].clientX;
-    clientY = e.touches[0].clientY;
-  } else {
-    clientX = e.clientX;
-    clientY = e.clientY;
-  }
+  if (e.type === "touchstart") { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; }
+  else { clientX = e.clientX; clientY = e.clientY; }
 
   if (showIntro) {
     if (Date.now() - lastIntermissionTime < 500) return;
-    if (introPage < 2) {
-      introPage++;
-      lastIntermissionTime = Date.now();
-    } else {
-      showIntro = false;
-      introPage = 0;
+    if (introPage < 2) { introPage++; lastIntermissionTime = Date.now(); }
+    else {
+      showIntro = false; introPage = 0;
       if (!gameStarted) {
-        startMusic.pause();
-        startMusic.currentTime = 0;
-        gameStarted = true;
-        resetGame();
-
-        let initialLevel = 0;
-        if (startScore >= 10000) initialLevel = 4;
-        else if (startScore >= 7500) initialLevel = 3;
-        else if (startScore >= 5000) initialLevel = 2;
-        else if (startScore >= 2500) initialLevel = 1;
+        startMusic.pause(); startMusic.currentTime = 0;
+        gameStarted = true; resetGame();
+        let initialLevel = (startScore >= 10000) ? 4 : (startScore >= 7500) ? 3 : (startScore >= 5000) ? 2 : (startScore >= 2500) ? 1 : 0;
         updateLevelMusic(initialLevel);
       }
     }
@@ -412,7 +399,6 @@ function moveDino(e) {
     let rect = board.getBoundingClientRect();
     let x = (clientX - rect.left) * (board.width / rect.width);
     let y = (clientY - rect.top) * (board.height / rect.height);
-
     let rightX = board.width - 100, startY = board.height / 2 - 110;
 
     if (x > rightX - btnW/2 && x < rightX + btnW/2 && y > startY + 20 && y < startY + 20 + btnH + 10) {
@@ -431,26 +417,15 @@ function moveDino(e) {
 
     let pRadius = playBtnSize / 2;
     if (x > board.width / 2 - pRadius && x < board.width / 2 + pRadius && y > board.height / 2 - pRadius && y < board.height / 2 + pRadius) {
-      startMusic.pause();
-      startMusic.currentTime = 0;
-      gameStarted = true;
-      resetGame();
-
-      let initialLevel = 0;
-      if (startScore >= 10000) initialLevel = 4;
-      else if (startScore >= 7500) initialLevel = 3;
-      else if (startScore >= 5000) initialLevel = 2;
-      else if (startScore >= 2500) initialLevel = 1;
+      startMusic.pause(); startMusic.currentTime = 0;
+      gameStarted = true; resetGame();
+      let initialLevel = (startScore >= 10000) ? 4 : (startScore >= 7500) ? 3 : (startScore >= 5000) ? 2 : (startScore >= 2500) ? 1 : 0;
       updateLevelMusic(initialLevel);
     }
     return;
   }
 
   if (e.code === "Space" || e.code === "ArrowUp" || e.type === "touchstart" || e.type === "mousedown") {
-    if (dino.y >= dinoY - 5) {
-      velocityY = -10;
-      jumpSound.currentTime = 0;
-      jumpSound.play();
-    }
+    if (dino.y >= dinoY - 5) { velocityY = -10; jumpSound.currentTime = 0; jumpSound.play().catch(()=>{}); }
   }
 }
