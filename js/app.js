@@ -181,12 +181,9 @@ function update() {
 
   if (!gameStarted) {
     drawStartScreen();
-    stopAllLevelMusic();
-    if (startMusic.paused) startMusic.play().catch(() => {});
+    // Musik wird jetzt über moveDino und drawStartScreen gesteuert
     return;
   }
-
-  if (!startMusic.paused) { startMusic.pause(); startMusic.currentTime = 0; }
 
   if (gameOver) {
     if (score > highScore) { highScore = score; localStorage.setItem("dinoHighScore", highScore); }
@@ -297,11 +294,8 @@ function placeCactus() {
 
   let selectedImg = currentSet[Math.floor(Math.random() * currentSet.length)];
 
-  // --- INDIVIDUELLE GRÖSSEN-LOGIK ---
-  let w = 65; // Standardbreite
-  let h = 70; // Standardhöhe
+  let w = 65, h = 70;
 
-  // Beispiel-Abfragen für Dateinamen
   if (selectedImg.src.includes("wine_slime.png")) { w = 50; h = 45; }
   else if (selectedImg.src.includes("flying_remote.png")) { w = 60; h = 40; }
   else if (selectedImg.src.includes("rolling_cheese.png")) { w = 75; h = 75; }
@@ -315,10 +309,8 @@ function placeCactus() {
     img: selectedImg,
     x: boardWidth - framePadding,
     y: boardHeight - h - framePadding - 15,
-    width: w,
-    height: h
+    width: w, height: h
   };
-
   cactusArray.push(monster);
   if (cactusArray.length > 5) cactusArray.shift();
 }
@@ -341,6 +333,10 @@ function resetGame() {
 }
 
 function drawStartScreen() {
+  if (startMusic.paused && !showIntro) {
+    startMusic.play().catch(() => {});
+  }
+
   if (isImageValid(startScreenImg)) context.drawImage(startScreenImg, 0, 0, board.width, board.height);
   else { context.fillStyle = "black"; context.fillRect(0, 0, board.width, board.height); }
 
@@ -376,10 +372,8 @@ function drawStartScreen() {
 }
 
 function moveDino(e) {
-  // Verhindert das lästige Zoomen/Scrollen beim Tippen
   if (e.cancelable) e.preventDefault();
 
-  // --- KOORDINATEN FÜR TOUCH ODER MAUS HOLEN ---
   let clientX, clientY;
   if (e.type === "touchstart") {
     clientX = e.touches[0].clientX;
@@ -389,7 +383,6 @@ function moveDino(e) {
     clientY = e.clientY;
   }
 
-  // --- LOGIK FÜR INTRO & STARTMENÜ ---
   if (showIntro) {
     if (Date.now() - lastIntermissionTime < 500) return;
     if (introPage < 2) {
@@ -399,8 +392,17 @@ function moveDino(e) {
       showIntro = false;
       introPage = 0;
       if (!gameStarted) {
+        startMusic.pause();
+        startMusic.currentTime = 0;
         gameStarted = true;
         resetGame();
+
+        let initialLevel = 0;
+        if (startScore >= 10000) initialLevel = 4;
+        else if (startScore >= 7500) initialLevel = 3;
+        else if (startScore >= 5000) initialLevel = 2;
+        else if (startScore >= 2500) initialLevel = 1;
+        updateLevelMusic(initialLevel);
       }
     }
     return;
@@ -408,23 +410,15 @@ function moveDino(e) {
 
   if (!gameStarted) {
     let rect = board.getBoundingClientRect();
-    let x = clientX - rect.left;
-    let y = clientY - rect.top;
-
-    // Skalierung anpassen (falls das Canvas auf dem Handy gestreckt wird)
-    let scaleX = board.width / rect.width;
-    let scaleY = board.height / rect.height;
-    x *= scaleX;
-    y *= scaleY;
+    let x = (clientX - rect.left) * (board.width / rect.width);
+    let y = (clientY - rect.top) * (board.height / rect.height);
 
     let rightX = board.width - 100, startY = board.height / 2 - 110;
 
-    // Intro-Button
     if (x > rightX - btnW/2 && x < rightX + btnW/2 && y > startY + 20 && y < startY + 20 + btnH + 10) {
       currentStoryLevel = 0; showIntro = true; introPage = 0; startScore = 0; lastIntermissionTime = Date.now(); return;
     }
 
-    // Checkpoints
     if (x < 200) {
       let cp_startY = board.height / 2 - 110, cp_gap = 70;
       if (y > cp_startY && y < cp_startY + btnH && highScore >= 2500) startScore = 2500;
@@ -435,16 +429,23 @@ function moveDino(e) {
       return;
     }
 
-    // Play-Button
     let pRadius = playBtnSize / 2;
     if (x > board.width / 2 - pRadius && x < board.width / 2 + pRadius && y > board.height / 2 - pRadius && y < board.height / 2 + pRadius) {
-      startMusic.pause(); startMusic.currentTime = 0; gameStarted = true; resetGame();
+      startMusic.pause();
+      startMusic.currentTime = 0;
+      gameStarted = true;
+      resetGame();
+
+      let initialLevel = 0;
+      if (startScore >= 10000) initialLevel = 4;
+      else if (startScore >= 7500) initialLevel = 3;
+      else if (startScore >= 5000) initialLevel = 2;
+      else if (startScore >= 2500) initialLevel = 1;
+      updateLevelMusic(initialLevel);
     }
     return;
   }
 
-  // --- SPRUNG-LOGIK IM SPIEL ---
-  // Reagiert auf Tastatur (Space/Up) ODER Tippen auf das Display
   if (e.code === "Space" || e.code === "ArrowUp" || e.type === "touchstart" || e.type === "mousedown") {
     if (dino.y >= dinoY - 5) {
       velocityY = -10;
