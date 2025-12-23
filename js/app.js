@@ -347,7 +347,7 @@ function drawStartScreen() {
   context.fillStyle = "white";
   context.textAlign = "center";
   context.font = "bold 32px courier";
-  context.fillText("ANNA TO THE RESCUE", board.width / 2, board.height / 2 - 160);
+  context.fillText("", board.width / 2, board.height / 2 - 160);
 
   if (isImageValid(playBtnImg)) {
     context.drawImage(playBtnImg, board.width / 2 - playBtnSize/2, board.height / 2 - playBtnSize/2, playBtnSize, playBtnSize);
